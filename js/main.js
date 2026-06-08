@@ -73,16 +73,40 @@ const toastHost = (() => {
   return host;
 })();
 
-function showToast(message) {
+function showToast(message, options = {}) {
   const node = document.createElement('div');
   node.className = 'toast';
-  node.textContent = message;
-  toastHost.appendChild(node);
-  requestAnimationFrame(() => node.classList.add('is-visible'));
-  setTimeout(() => {
+  node.setAttribute('role', 'status');
+
+  const text = document.createElement('span');
+  text.className = 'toast-text';
+  text.textContent = message;
+  node.appendChild(text);
+
+  let dismissed = false;
+  let exitTimer = null;
+  const dismiss = () => {
+    if (dismissed) return;
+    dismissed = true;
+    if (exitTimer) clearTimeout(exitTimer);
     node.classList.remove('is-visible');
     setTimeout(() => node.remove(), 200);
-  }, 2200);
+  };
+
+  if (options.action && typeof options.action.onClick === 'function') {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'toast-action';
+    button.textContent = options.action.label || 'Undo';
+    button.addEventListener('click', () => {
+      try { options.action.onClick(); } finally { dismiss(); }
+    });
+    node.appendChild(button);
+  }
+
+  toastHost.appendChild(node);
+  requestAnimationFrame(() => node.classList.add('is-visible'));
+  exitTimer = setTimeout(dismiss, options.duration ?? 2200);
 }
 
 function uid() {
@@ -224,13 +248,33 @@ function addItem() {
 function removeSelected() {
   const target = selectedItem();
   if (!target) return;
+  const removedIndex = state.items.findIndex((item) => item.id === target.id);
   const nextItems = state.items.filter((item) => item.id !== target.id);
   commit({
     ...state,
     items: nextItems,
     ui: { ...state.ui, selectedId: nextItems[0]?.id || null },
   });
-  showToast('Removed client.');
+  showToast(`Removed ${target.title}.`, {
+    duration: 6000,
+    action: {
+      label: 'Undo',
+      onClick: () => restoreItem(target, removedIndex),
+    },
+  });
+}
+
+function restoreItem(item, index) {
+  if (!item || state.items.some((existing) => existing.id === item.id)) return;
+  const nextItems = state.items.slice();
+  const safeIndex = Math.max(0, Math.min(index ?? nextItems.length, nextItems.length));
+  nextItems.splice(safeIndex, 0, item);
+  commit({
+    ...state,
+    items: nextItems,
+    ui: { ...state.ui, selectedId: item.id },
+  });
+  showToast(`Restored ${item.title}.`);
 }
 
 function exportState() {
