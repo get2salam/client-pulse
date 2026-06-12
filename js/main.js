@@ -147,7 +147,20 @@ function escapeHtml(value) {
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function safeItem(item) {
+  return {
+    ...item,
+    id: escapeHtml(item.id),
+    title: escapeHtml(item.title),
+    category: escapeHtml(item.category),
+    state: escapeHtml(item.state),
+    contact: escapeHtml(item.contact),
+    note: escapeHtml(item.note),
+  };
 }
 
 function normalize(item = {}) {
@@ -388,9 +401,9 @@ function renderInsights(items) {
   ];
   refs.insights.innerHTML = cards.map((card) => `
     <article class="card insight-card">
-      <p class="eyebrow">${card.label}</p>
-      <h3>${card.title}</h3>
-      <p>${card.body}</p>
+      <p class="eyebrow">${escapeHtml(card.label)}</p>
+      <h3>${escapeHtml(card.title)}</h3>
+      <p>${escapeHtml(card.body)}</p>
     </article>
   `).join('');
 }
@@ -406,26 +419,29 @@ function renderList(items) {
     return;
   }
 
-  refs.list.innerHTML = items.map((item) => `
-    <button class="item ${item.id === state.ui.selectedId ? 'is-selected' : ''}" type="button" data-id="${item.id}">
+  refs.list.innerHTML = items.map((item) => {
+    const safe = safeItem(item);
+    return `
+    <button class="item ${item.id === state.ui.selectedId ? 'is-selected' : ''}" type="button" data-id="${safe.id}">
       <div class="item-top">
-        <strong>${item.title}</strong>
+        <strong>${safe.title}</strong>
         <span class="score">${priority(item)}</span>
       </div>
-      <p>${item.note}</p>
+      <p>${safe.note}</p>
       <div class="badge-row">
         <span class="pill ${toneForDue(item)}">Next ${formatDate(item.nextTouch)}</span>
-        <span class="pill">${item.contact}</span>
+        <span class="pill">${safe.contact}</span>
         <span class="pill">${formatMoney(item.value)}</span>
       </div>
       <div class="meta">
-        <span>${item.category}</span>
-        <span>${item.state}</span>
+        <span>${safe.category}</span>
+        <span>${safe.state}</span>
         <span>Momentum ${item.momentum}/10</span>
         <span>Last touch ${formatDate(item.lastTouch)}</span>
       </div>
     </button>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderEditor(item) {
@@ -439,35 +455,37 @@ function renderEditor(item) {
     return;
   }
 
+  const safe = safeItem(item);
+
   refs.editor.innerHTML = `
     <div class="editor-head">
       <div>
         <p class="eyebrow">Client editor</p>
-        <h3>${item.title}</h3>
+        <h3>${safe.title}</h3>
       </div>
       <span class="score">Priority ${priority(item)}</span>
     </div>
     <div class="editor-grid">
       <label class="field">
         <span>Client name</span>
-        <input type="text" data-item-field="title" value="${escapeHtml(item.title)}" />
+        <input type="text" data-item-field="title" value="${safe.title}" />
       </label>
       <label class="field">
         <span>Primary contact</span>
-        <input type="text" data-item-field="contact" value="${escapeHtml(item.contact)}" />
+        <input type="text" data-item-field="contact" value="${safe.contact}" />
       </label>
       <label class="field">
         <span>Context</span>
-        <textarea data-item-field="note">${escapeHtml(item.note)}</textarea>
+        <textarea data-item-field="note">${safe.note}</textarea>
       </label>
       <div class="field-grid">
         <label class="field">
           <span>Type</span>
-          <select data-item-field="category">${CONFIG.categories.map((entry) => `<option value="${entry}" ${item.category === entry ? 'selected' : ''}>${entry}</option>`).join('')}</select>
+          <select data-item-field="category">${CONFIG.categories.map((entry) => `<option value="${escapeHtml(entry)}" ${item.category === entry ? 'selected' : ''}>${escapeHtml(entry)}</option>`).join('')}</select>
         </label>
         <label class="field">
           <span>Status</span>
-          <select data-item-field="state">${CONFIG.states.map((entry) => `<option value="${entry}" ${item.state === entry ? 'selected' : ''}>${entry}</option>`).join('')}</select>
+          <select data-item-field="state">${CONFIG.states.map((entry) => `<option value="${escapeHtml(entry)}" ${item.state === entry ? 'selected' : ''}>${escapeHtml(entry)}</option>`).join('')}</select>
         </label>
       </div>
       <div class="field-grid">
@@ -525,15 +543,18 @@ function renderQueues() {
       <span class="chip">${queue.length} tracked</span>
     </div>
     <div class="stack">
-      ${queue.slice(0, 5).map((item) => `
+      ${queue.slice(0, 5).map((item) => {
+        const safe = safeItem(item);
+        return `
         <div class="mini-card">
           <div class="inline-split">
-            <strong>${item.title}</strong>
+            <strong>${safe.title}</strong>
             <span class="pill ${toneForDue(item)}">${formatDate(item.nextTouch)}</span>
           </div>
-          <p>${item.contact}, ${item.state} state, ${formatMoney(item.value)} account value.</p>
+          <p>${safe.contact}, ${safe.state} state, ${formatMoney(item.value)} account value.</p>
         </div>
-      `).join('')}
+      `;
+      }).join('')}
     </div>
   `;
 
@@ -547,8 +568,8 @@ function renderQueues() {
       <span class="chip">${formatMoney(state.items.reduce((sum, item) => sum + item.value, 0))}</span>
     </div>
     <ul class="metric-list">
-      ${grouped.map(({ entry, count }) => `<li><span>${entry}</span><strong>${count}</strong></li>`).join('')}
-      <li><span>Highest value account</span><strong>${state.items.length ? [...state.items].sort((a, b) => b.value - a.value)[0].title : '—'}</strong></li>
+      ${grouped.map(({ entry, count }) => `<li><span>${escapeHtml(entry)}</span><strong>${count}</strong></li>`).join('')}
+      <li><span>Highest value account</span><strong>${state.items.length ? escapeHtml([...state.items].sort((a, b) => b.value - a.value)[0].title) : '—'}</strong></li>
     </ul>
   `;
 }

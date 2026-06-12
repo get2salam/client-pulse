@@ -1,0 +1,55 @@
+import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+
+const [html, js] = await Promise.all([
+  readFile(new URL('../index.html', import.meta.url), 'utf8'),
+  readFile(new URL('../js/main.js', import.meta.url), 'utf8'),
+]);
+
+function includesAll(source, values, label) {
+  const missing = values.filter((value) => !source.includes(value));
+  assert.deepEqual(missing, [], `${label} missing: ${missing.join(', ')}`);
+}
+
+includesAll(html, [
+  '<link rel="stylesheet" href="./styles/app.css" />',
+  '<script type="module" src="./js/main.js"></script>',
+  'data-role="stats"',
+  'data-role="insights"',
+  'data-role="list"',
+  'data-role="editor"',
+  'data-field="search"',
+  'data-field="category"',
+  'data-field="status"',
+  'data-action="import"',
+  'data-action="export"',
+  'data-action="new"',
+], 'HTML app contract');
+
+includesAll(js, [
+  "const STORAGE_KEY = `${CONFIG.slug}/state/v2`;",
+  "schema: `${CONFIG.slug}/v2`",
+  'function importState(file)',
+  'function exportState()',
+  "if (event.key.toLowerCase() === 'n')",
+  "if (event.key === '/')",
+], 'client-pulse persistence and shortcuts');
+
+includesAll(js, [
+  'function escapeHtml(value)',
+  'function safeItem(item)',
+  ".replaceAll('&', '&amp;')",
+  ".replaceAll('<', '&lt;')",
+  ".replaceAll('>', '&gt;')",
+  ".replaceAll('\"', '&quot;')",
+  '.replaceAll("\'", \'&#39;\')',
+  'const safe = safeItem(item);',
+  '${escapeHtml(card.title)}',
+  '${escapeHtml(card.body)}',
+  'escapeHtml([...state.items].sort((a, b) => b.value - a.value)[0].title)',
+], 'HTML escaping guard');
+
+const renderBlocks = ['refs.insights.innerHTML', 'refs.list.innerHTML', 'refs.editor.innerHTML', 'refs.secondaryPrimary.innerHTML', 'refs.secondarySecondary.innerHTML'];
+includesAll(js, renderBlocks, 'expected render surfaces');
+
+console.log('Static contract verified: app shell, local backup flow, shortcuts, and escaped render surfaces.');

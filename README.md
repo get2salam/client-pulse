@@ -30,6 +30,14 @@ python -m http.server 8000
 
 Then open <http://localhost:8000>.
 
+## Verification
+
+```bash
+npm test
+```
+
+The static check verifies the browser shell, local backup flow, keyboard shortcuts, and escaped render surfaces used by the client board.
+
 ## Keyboard shortcuts
 
 - `N` creates a new client record
