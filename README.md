@@ -38,6 +38,15 @@ npm test
 
 The static check verifies the browser shell, local backup flow, keyboard shortcuts, and escaped render surfaces used by the client board.
 
+## Developer workflow
+
+Client Pulse is a zero-install static project. Use Node.js 22+ to run the same verification command that CI runs, then serve the repo with any static file server for manual review.
+
+```bash
+npm test
+python -m http.server 8000
+```
+
 ## Keyboard shortcuts
 
 - `N` creates a new client record
