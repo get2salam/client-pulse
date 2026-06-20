@@ -28,12 +28,25 @@ includesAll(html, [
 
 includesAll(js, [
   "const STORAGE_KEY = `${CONFIG.slug}/state/v2`;",
+  "const IMPORT_SCHEMA = `${CONFIG.slug}/v2`;",
   "schema: `${CONFIG.slug}/v2`",
   'function importState(file)',
   'function exportState()',
   "if (event.key.toLowerCase() === 'n')",
   "if (event.key === '/')",
 ], 'client-pulse persistence and shortcuts');
+
+includesAll(js, [
+  'const MAX_IMPORT_BYTES = 128 * 1024;',
+  'const MAX_IMPORT_ITEMS = 100;',
+  'function boundedText(value, fallback, limit)',
+  'function clampNumber(value, fallback, min, max)',
+  'function validISODate(value)',
+  'function normalizeState(snapshot = {})',
+  "if (parsed.schema && parsed.schema !== IMPORT_SCHEMA) throw new Error('Import schema is not supported.');",
+  "if ('items' in parsed && !Array.isArray(parsed.items)) throw new Error('Import items must be an array.');",
+  "if (Array.isArray(parsed.items) && parsed.items.length > MAX_IMPORT_ITEMS) throw new Error('Import contains too many clients.');",
+], 'backup import hardening');
 
 includesAll(js, [
   'function escapeHtml(value)',
@@ -52,4 +65,4 @@ includesAll(js, [
 const renderBlocks = ['refs.insights.innerHTML', 'refs.list.innerHTML', 'refs.editor.innerHTML', 'refs.secondaryPrimary.innerHTML', 'refs.secondarySecondary.innerHTML'];
 includesAll(js, renderBlocks, 'expected render surfaces');
 
-console.log('Static contract verified: app shell, local backup flow, shortcuts, and escaped render surfaces.');
+console.log('Static contract verified: app shell, hardened local backup flow, shortcuts, and escaped render surfaces.');

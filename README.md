@@ -14,7 +14,7 @@ Client Pulse is a local-first relationship board for solo operators, agencies, a
 - stores **contact name**, **tracked value**, and **relationship momentum** per client
 - includes quick actions for logging a fresh touchpoint, nudging a follow-up, and restoring account health
 - renders a follow-up queue and relationship snapshot beneath the main board
-- saves locally in the browser with JSON import/export backups
+- saves locally in the browser with size-limited, schema-aware JSON import/export backups
 
 ## Why it feels different
 
@@ -76,6 +76,8 @@ python -m http.server 8000
 ## Privacy
 
 Everything stays in your browser unless you export a JSON backup.
+
+Imported backups are checked before they touch the board: unsupported schemas, oversized files, non-array client lists, invalid dates, out-of-range scores, and unexpectedly long text fields are rejected or normalized locally.
 
 ## License
 

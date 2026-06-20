@@ -50,6 +50,18 @@ const CONFIG = {
 
 const STORAGE_KEY = `${CONFIG.slug}/state/v2`;
 const NUMBER_FIELDS = new Set(['score', 'effort', 'momentum', 'value']);
+const IMPORT_SCHEMA = `${CONFIG.slug}/v2`;
+const MAX_IMPORT_BYTES = 128 * 1024;
+const MAX_IMPORT_ITEMS = 100;
+const TEXT_LIMITS = {
+  id: 80,
+  title: 90,
+  contact: 80,
+  note: 420,
+  boardTitle: 80,
+  boardSubtitle: 160,
+  search: 80,
+};
 const refs = {
   boardTitle: document.querySelector('[data-role="board-title"]'),
   boardSubtitle: document.querySelector('[data-role="board-subtitle"]'),
@@ -163,20 +175,63 @@ function safeItem(item) {
   };
 }
 
+function boundedText(value, fallback, limit) {
+  const text = typeof value === 'string' ? value : fallback;
+  return text
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+    .slice(0, limit);
+}
+
+function clampNumber(value, fallback, min, max) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(max, Math.max(min, numeric));
+}
+
+function validISODate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isFinite(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}
+
 function normalize(item = {}) {
+  const source = item && typeof item === 'object' ? item : {};
   return {
-    id: item.id || uid(),
-    title: item.title || 'New client',
-    category: CONFIG.categories.includes(item.category) ? item.category : CONFIG.categories[0],
-    state: CONFIG.states.includes(item.state) ? item.state : CONFIG.states[0],
-    score: Number(item.score ?? 7),
-    effort: Number(item.effort ?? 3),
-    momentum: Number(item.momentum ?? 5),
-    value: Number(item.value ?? 1200),
-    contact: item.contact || 'Primary contact',
-    lastTouch: item.lastTouch || todayISO(-3),
-    nextTouch: item.nextTouch || todayISO(3),
-    note: item.note || 'Capture the current relationship context and the next best move.',
+    id: boundedText(source.id || uid(), uid(), TEXT_LIMITS.id),
+    title: boundedText(source.title || 'New client', 'New client', TEXT_LIMITS.title),
+    category: CONFIG.categories.includes(source.category) ? source.category : CONFIG.categories[0],
+    state: CONFIG.states.includes(source.state) ? source.state : CONFIG.states[0],
+    score: clampNumber(source.score ?? 7, 7, 1, 10),
+    effort: clampNumber(source.effort ?? 3, 3, 1, 10),
+    momentum: clampNumber(source.momentum ?? 5, 5, 1, 10),
+    value: Math.round(clampNumber(source.value ?? 1200, 1200, 0, 1000000)),
+    contact: boundedText(source.contact || 'Primary contact', 'Primary contact', TEXT_LIMITS.contact),
+    lastTouch: validISODate(source.lastTouch) ? source.lastTouch : todayISO(-3),
+    nextTouch: validISODate(source.nextTouch) ? source.nextTouch : todayISO(3),
+    note: boundedText(source.note || 'Capture the current relationship context and the next best move.', 'Capture the current relationship context and the next best move.', TEXT_LIMITS.note),
+  };
+}
+
+function normalizeUi(ui = {}, items = []) {
+  const source = ui && typeof ui === 'object' ? ui : {};
+  const selectedId = items.some((item) => item.id === source.selectedId) ? source.selectedId : items[0]?.id || null;
+  return {
+    search: boundedText(source.search || '', '', TEXT_LIMITS.search),
+    category: source.category === 'all' || CONFIG.categories.includes(source.category) ? source.category : 'all',
+    status: source.status === 'all' || CONFIG.states.includes(source.status) ? source.status : 'all',
+    selectedId,
+  };
+}
+
+function normalizeState(snapshot = {}) {
+  const source = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) ? snapshot : {};
+  const rawItems = Array.isArray(source.items) ? source.items.slice(0, MAX_IMPORT_ITEMS) : CONFIG.items;
+  const items = rawItems.map((item) => normalize(item));
+  return {
+    boardTitle: boundedText(source.boardTitle || CONFIG.boardTitle, CONFIG.boardTitle, TEXT_LIMITS.boardTitle),
+    boardSubtitle: boundedText(source.boardSubtitle || CONFIG.boardSubtitle, CONFIG.boardSubtitle, TEXT_LIMITS.boardSubtitle),
+    items,
+    ui: normalizeUi(source.ui, items),
   };
 }
 
@@ -187,12 +242,7 @@ function priority(item) {
 }
 
 function seedState() {
-  return {
-    boardTitle: CONFIG.boardTitle,
-    boardSubtitle: CONFIG.boardSubtitle,
-    items: CONFIG.items.map((item) => normalize(item)),
-    ui: { search: '', category: 'all', status: 'all', selectedId: null },
-  };
+  return normalizeState({ items: CONFIG.items });
 }
 
 function hydrate() {
@@ -200,12 +250,7 @@ function hydrate() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return seedState();
     const parsed = JSON.parse(raw);
-    return {
-      ...seedState(),
-      ...parsed,
-      items: (parsed.items || []).map((item) => normalize(item)),
-      ui: { ...seedState().ui, ...(parsed.ui || {}) },
-    };
+    return normalizeState(parsed);
   } catch (error) {
     console.warn('Falling back to seed state', error);
     return seedState();
@@ -302,14 +347,14 @@ function exportState() {
 }
 
 async function importState(file) {
+  if (file.size > MAX_IMPORT_BYTES) throw new Error('Import file is too large.');
   const raw = await file.text();
   const parsed = JSON.parse(raw);
-  commit({
-    ...seedState(),
-    ...parsed,
-    items: (parsed.items || []).map((item) => normalize(item)),
-    ui: { ...seedState().ui, ...(parsed.ui || {}) },
-  });
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Import must be a JSON object.');
+  if (parsed.schema && parsed.schema !== IMPORT_SCHEMA) throw new Error('Import schema is not supported.');
+  if ('items' in parsed && !Array.isArray(parsed.items)) throw new Error('Import items must be an array.');
+  if (Array.isArray(parsed.items) && parsed.items.length > MAX_IMPORT_ITEMS) throw new Error('Import contains too many clients.');
+  commit(normalizeState(parsed));
   showToast('Imported backup.');
 }
 
