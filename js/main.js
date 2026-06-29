@@ -270,7 +270,9 @@ function filteredItems() {
     .filter((item) => state.ui.category === 'all' || item.category === state.ui.category)
     .filter((item) => state.ui.status === 'all' || item.state === state.ui.status)
     .filter((item) => !query || `${item.title} ${item.note} ${item.category} ${item.state} ${item.contact}`.toLowerCase().includes(query))
-    .sort((a, b) => priority(b) - priority(a) || daysFromToday(a.nextTouch) - daysFromToday(b.nextTouch));
+    .map((item) => ({ item, p: priority(item), due: daysFromToday(item.nextTouch) }))
+    .sort((a, b) => b.p - a.p || a.due - b.due)
+    .map(({ item }) => item);
 }
 
 function selectedItem() {
@@ -402,13 +404,16 @@ function toneForDue(item) {
 }
 
 function renderStats(items) {
-  const overdue = state.items.filter((item) => daysFromToday(item.nextTouch) <= 0).length;
-  const value = state.items.reduce((sum, item) => sum + Number(item.value || 0), 0);
-  const weeklyTouches = state.items.filter((item) => daysFromToday(item.lastTouch) >= -7).length;
-  const healthy = state.items.filter((item) => item.state === 'Healthy').length;
+  let overdue = 0, totalValue = 0, weeklyTouches = 0, healthy = 0;
+  for (const item of state.items) {
+    if (daysFromToday(item.nextTouch) <= 0) overdue++;
+    totalValue += Number(item.value || 0);
+    if (daysFromToday(item.lastTouch) >= -7) weeklyTouches++;
+    if (item.state === 'Healthy') healthy++;
+  }
   const cards = [
     ['Clients', String(state.items.length), 'active records in the board'],
-    ['Pipeline value', formatMoney(value), 'tracked relationship value'],
+    ['Pipeline value', formatMoney(totalValue), 'tracked relationship value'],
     ['Overdue', String(overdue), 'touchpoints needing attention'],
     ['Touched this week', String(weeklyTouches), `${healthy} relationships feel healthy`],
   ];
@@ -424,9 +429,13 @@ function renderStats(items) {
 }
 
 function renderInsights(items) {
-  const nextTouch = [...state.items].sort((a, b) => daysFromToday(a.nextTouch) - daysFromToday(b.nextTouch))[0];
-  const biggest = [...state.items].sort((a, b) => b.value - a.value)[0];
-  const atRisk = state.items.find((item) => item.state === 'Urgent') || [...state.items].sort((a, b) => a.momentum - b.momentum)[0];
+  let nextTouch = null, nextTouchDays = Infinity, atRisk = null, atRiskIsUrgent = false;
+  for (const item of state.items) {
+    const days = daysFromToday(item.nextTouch);
+    if (days < nextTouchDays) { nextTouch = item; nextTouchDays = days; }
+    if (item.state === 'Urgent' && !atRiskIsUrgent) { atRisk = item; atRiskIsUrgent = true; }
+    else if (!atRiskIsUrgent && (!atRisk || item.momentum < atRisk.momentum)) { atRisk = item; }
+  }
   const cards = [
     {
       label: 'Highest leverage',
@@ -578,7 +587,10 @@ function renderEditor(item) {
 }
 
 function renderQueues() {
-  const queue = [...state.items].sort((a, b) => daysFromToday(a.nextTouch) - daysFromToday(b.nextTouch));
+  const queue = state.items
+    .map((item) => ({ item, due: daysFromToday(item.nextTouch) }))
+    .sort((a, b) => a.due - b.due)
+    .map(({ item }) => item);
   refs.secondaryPrimary.innerHTML = `
     <div class="secondary-head">
       <div>
@@ -630,7 +642,7 @@ function render() {
   renderStats(items);
   renderInsights(items);
   renderList(items);
-  renderEditor(selectedItem());
+  renderEditor(state.items.find((item) => item.id === state.ui.selectedId) || null);
   renderQueues();
 }
 

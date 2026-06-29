@@ -65,4 +65,14 @@ includesAll(js, [
 const renderBlocks = ['refs.insights.innerHTML', 'refs.list.innerHTML', 'refs.editor.innerHTML', 'refs.secondaryPrimary.innerHTML', 'refs.secondarySecondary.innerHTML'];
 includesAll(js, renderBlocks, 'expected render surfaces');
 
-console.log('Static contract verified: app shell, hardened local backup flow, shortcuts, and escaped render surfaces.');
+includesAll(js, [
+  '.map((item) => ({ item, p: priority(item)',
+  '.sort((a, b) => b.p - a.p || a.due - b.due)',
+  'let overdue = 0, totalValue = 0, weeklyTouches = 0, healthy = 0;',
+  'for (const item of state.items)',
+  'let nextTouch = null, nextTouchDays = Infinity, atRisk = null, atRiskIsUrgent = false;',
+  '.map((item) => ({ item, due: daysFromToday(item.nextTouch) }))',
+  'state.items.find((item) => item.id === state.ui.selectedId) || null',
+], 'single-pass render optimizations');
+
+console.log('Static contract verified: app shell, hardened local backup flow, shortcuts, escaped render surfaces, and single-pass render optimizations.');
