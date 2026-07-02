@@ -9,6 +9,7 @@
   </head>
   <body style="--primary:#2dd4bf;--secondary:#67e8f9;--panel:#0b1620;--edge:#20404d;--glow:rgba(45, 212, 191, 0.24)">
     <div class="shell">
+      <p class="visually-hidden" role="status" aria-live="polite" data-role="status-announcer"></p>
       <header class="topbar">
         <div>
           <p class="eyebrow">Relationship operating system</p>
@@ -18,7 +19,7 @@
         <div class="actions">
           <button class="btn" data-action="import">Import</button>
           <button class="btn" data-action="export">Export</button>
-          <button class="btn btn-primary" data-action="new">New client</button>
+          <button class="btn btn-primary" data-action="new" aria-keyshortcuts="n" title="Shortcut: N">New client</button>
           <input id="import-file" type="file" accept=".json,application/json" hidden />
         </div>
       </header>
@@ -36,17 +37,17 @@
       <section class="insights" data-role="insights"></section>
 
       <section class="controls card">
-        <label>
+        <label for="filter-search">
           <span>Search</span>
-          <input type="search" data-field="search" placeholder="Search clients, notes, and contacts..." />
+          <input id="filter-search" type="search" data-field="search" placeholder="Search clients, notes, and contacts..." aria-keyshortcuts="/" title="Shortcut: /" />
         </label>
-        <label>
+        <label for="filter-category">
           <span>Client type</span>
-          <select data-field="category"></select>
+          <select id="filter-category" data-field="category"></select>
         </label>
-        <label>
+        <label for="filter-status">
           <span>Status</span>
-          <select data-field="status"></select>
+          <select id="filter-status" data-field="status"></select>
         </label>
         <button class="btn" type="button" data-action="reset">Re-seed sample</button>
       </section>

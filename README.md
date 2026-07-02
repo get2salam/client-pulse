@@ -15,6 +15,7 @@ Client Pulse is a local-first relationship board for solo operators, agencies, a
 - includes quick actions for logging a fresh touchpoint, nudging a follow-up, and restoring account health
 - renders a follow-up queue and relationship snapshot beneath the main board
 - saves locally in the browser with size-limited, schema-aware JSON import/export backups
+- announces the selected client and its priority to screen readers via a live status region, and marks the active client with `aria-current` and explicit filter labels
 
 ## Why it feels different
 

@@ -70,6 +70,7 @@ const refs = {
   count: document.querySelector('[data-role="count"]'),
   list: document.querySelector('[data-role="list"]'),
   editor: document.querySelector('[data-role="editor"]'),
+  statusAnnouncer: document.querySelector('[data-role="status-announcer"]'),
   secondaryPrimary: document.querySelector('[data-role="secondary-primary"]'),
   secondarySecondary: document.querySelector('[data-role="secondary-secondary"]'),
   search: document.querySelector('[data-field="search"]'),
@@ -475,8 +476,9 @@ function renderList(items) {
 
   refs.list.innerHTML = items.map((item) => {
     const safe = safeItem(item);
+    const isSelected = item.id === state.ui.selectedId;
     return `
-    <button class="item ${item.id === state.ui.selectedId ? 'is-selected' : ''}" type="button" data-id="${safe.id}">
+    <button class="item ${isSelected ? 'is-selected' : ''}" type="button" data-id="${safe.id}" ${isSelected ? 'aria-current="true"' : ''}>
       <div class="item-top">
         <strong>${safe.title}</strong>
         <span class="score">${priority(item)}</span>
@@ -506,10 +508,12 @@ function renderEditor(item) {
         <p>Pick a client or create a new one.</p>
       </div>
     `;
+    refs.statusAnnouncer.textContent = 'No client selected.';
     return;
   }
 
   const safe = safeItem(item);
+  refs.statusAnnouncer.textContent = `Editing ${item.title}. Priority ${priority(item)}, next touch ${formatDate(item.nextTouch)}.`;
 
   refs.editor.innerHTML = `
     <div class="editor-head">

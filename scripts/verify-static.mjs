@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
-const [html, js] = await Promise.all([
+const [html, js, css] = await Promise.all([
   readFile(new URL('../index.html', import.meta.url), 'utf8'),
   readFile(new URL('../js/main.js', import.meta.url), 'utf8'),
+  readFile(new URL('../styles/app.css', import.meta.url), 'utf8'),
 ]);
 
 function includesAll(source, values, label) {
@@ -75,4 +76,25 @@ includesAll(js, [
   'state.items.find((item) => item.id === state.ui.selectedId) || null',
 ], 'single-pass render optimizations');
 
-console.log('Static contract verified: app shell, hardened local backup flow, shortcuts, escaped render surfaces, and single-pass render optimizations.');
+includesAll(html, [
+  'data-role="status-announcer"',
+  'role="status" aria-live="polite"',
+  'for="filter-search"',
+  'for="filter-category"',
+  'for="filter-status"',
+  'aria-keyshortcuts="n"',
+  'aria-keyshortcuts="/"',
+], 'accessibility markup contract');
+
+includesAll(js, [
+  'statusAnnouncer: document.querySelector(\'[data-role="status-announcer"]\')',
+  "refs.statusAnnouncer.textContent = 'No client selected.';",
+  'refs.statusAnnouncer.textContent = `Editing ${item.title}. Priority ${priority(item)}, next touch ${formatDate(item.nextTouch)}.`;',
+  'aria-current="true"',
+], 'assistive-tech selection announcements');
+
+includesAll(css, [
+  '.visually-hidden {',
+], 'visually-hidden utility for screen-reader-only status text');
+
+console.log('Static contract verified: app shell, hardened local backup flow, shortcuts, escaped render surfaces, single-pass render optimizations, and screen-reader selection announcements.');
