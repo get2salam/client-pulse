@@ -78,7 +78,7 @@ python -m http.server 8000
 
 Everything stays in your browser unless you export a JSON backup.
 
-Imported backups are checked before they touch the board: unsupported schemas, oversized files, non-array client lists, invalid dates, out-of-range scores, and unexpectedly long text fields are rejected or normalized locally.
+Imported backups are checked before they touch the board: unsupported schemas, oversized files, non-array client lists, invalid dates, out-of-range scores, and unexpectedly long text fields are rejected or normalized locally. Client ids are also de-duplicated on import, so a hand-merged or re-imported backup can never make one edit or remove action silently apply to more than one client.
 
 ## License
 

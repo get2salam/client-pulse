@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
-const [html, js, css] = await Promise.all([
+const [html, js, state, css] = await Promise.all([
   readFile(new URL('../index.html', import.meta.url), 'utf8'),
   readFile(new URL('../js/main.js', import.meta.url), 'utf8'),
+  readFile(new URL('../js/state.mjs', import.meta.url), 'utf8'),
   readFile(new URL('../styles/app.css', import.meta.url), 'utf8'),
 ]);
 
@@ -39,15 +40,20 @@ includesAll(js, [
 
 includesAll(js, [
   'const MAX_IMPORT_BYTES = 128 * 1024;',
-  'const MAX_IMPORT_ITEMS = 100;',
-  'function boundedText(value, fallback, limit)',
-  'function clampNumber(value, fallback, min, max)',
-  'function validISODate(value)',
-  'function normalizeState(snapshot = {})',
   "if (parsed.schema && parsed.schema !== IMPORT_SCHEMA) throw new Error('Import schema is not supported.');",
   "if ('items' in parsed && !Array.isArray(parsed.items)) throw new Error('Import items must be an array.');",
   "if (Array.isArray(parsed.items) && parsed.items.length > MAX_IMPORT_ITEMS) throw new Error('Import contains too many clients.');",
 ], 'backup import hardening');
+
+includesAll(state, [
+  'export const MAX_IMPORT_ITEMS = 100;',
+  'function boundedText(value, fallback, limit)',
+  'function clampNumber(value, fallback, min, max)',
+  'function validISODate(value)',
+  'export function normalizeState(snapshot = {})',
+  'const seenIds = new Set();',
+  "if (seenIds.has(normalized.id)) return { ...normalized, id: uid() };",
+], 'state module de-duplicates imported client ids');
 
 includesAll(js, [
   'function escapeHtml(value)',

@@ -16,8 +16,8 @@ assert.ok(!pkg.devDependencies, 'client-pulse should keep verification on Node b
 
 assert.equal(
   pkg.scripts?.test,
-  'node scripts/verify-static.mjs && node scripts/verify-dev-workflow.mjs',
-  'npm test should run both product and developer-workflow checks',
+  'node scripts/verify-static.mjs && node scripts/verify-dev-workflow.mjs && node scripts/verify-state-logic.mjs',
+  'npm test should run product, developer-workflow, and state-logic checks',
 );
 
 const requiredReadmeSnippets = [
